@@ -11,7 +11,6 @@ import "hardhat/console.sol";
 // We inherit the contract we imported. This means we'll have access
 // to the inherited contract's methods.
 contract Domains is ERC721URIStorage {
-  // Magic given to us by OpenZeppelin to help us keep track of tokenIds.
   using Counters for Counters.Counter;
   Counters.Counter private _tokenIds;
 
@@ -39,7 +38,6 @@ function getAllNames() public view returns (string[] memory) {
 
   return allNames;
 }
-
 
   address payable public owner;
 

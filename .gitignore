@@ -42,7 +42,16 @@ build/Release
 # Dependency directories
 node_modules/
 jspm_packages/
-
+scripts/
+artifacts/
+artifacts
+/artifacts
+cache/
+cache
+/cache
+.history
+/.history
+.history/
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 
