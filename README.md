@@ -1,3 +1,3 @@
-# Domain handles for Subport.xyz
+# Domain handles for subport.xyz
 
 yourname.subport
