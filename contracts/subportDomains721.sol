@@ -3,6 +3,11 @@
 /Author Randal Herndon | Twinny
 * Created: April 22nd, 2023
 * subport.xyz
+                  __                             __   
+ .-----. .--.--. |  |--. .-----. .-----. .----. |  |_ 
+ |__ --| |  |  | |  _  | |  _  | |  _  | |   _| |   _|
+ |_____| |_____| |_____| |   __| |_____| |__|   |____|
+                         |__|                                    
 */
 pragma solidity ^0.8.10;
 
@@ -24,6 +29,7 @@ contract subportDomains721 is ERC721URIStorage, Pausable {
     bool public openToPublic;
     bool public isBeta;
 
+    //@dev On-chain storage of the svg  
     string svgPartOne =
         '<svg xmlns="http://www.w3.org/2000/svg" width="270" height="270" fill="none"><path fill="url(#a)" d="M0 0h270v270H0z"/><defs><filter id="b" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="270" width="270"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity=".225" width="200%" height="200%"/></filter></defs><path d="M16.29 59.69a11.06 11.06 0 0 1 10.83-8.79h19.72c2.14 0 3.29-1.15 3.59-2.56.33-1.57-.49-2.39-2.63-2.39H34.85c-9.4 0-15.58-4.78-13.28-15.75 2.42-11.55 12.8-15.84 20.8-15.84h18.35c5.93 0 10.36 5.46 9.15 11.26a2.653 2.653 0 0 1-2.59 2.1H42.21c-2.06 0-3.11 1.07-3.39 2.39s.31 2.47 2.37 2.47h11.05c11.88 0 17.44 6.1 15.49 15.42s-10.5 16.25-21.88 16.25H20c-2.41 0-4.21-2.21-3.71-4.57Z" fill="#fff"/><defs><linearGradient id="a" x1="0" y1="0" x2="270" y2="270" gradientUnits="userSpaceOnUse"><stop stop-color="#00008b"/><stop offset="1" stop-color="#004eba" stop-opacity=".99"/></linearGradient></defs><text x="20.5" y="231" font-size="18" fill="#fff" filter="url(#b)" font-family="Plus Jakarta Sans,DejaVu Sans,Noto Color Emoji,Apple Color Emoji,sans-serif" font-weight="bold">';
     string svgPartTwo = "</text></svg>";
@@ -33,7 +39,7 @@ contract subportDomains721 is ERC721URIStorage, Pausable {
     mapping(uint => string) public names;
     mapping(string => string) public roles;
 
-   
+   //@dev Check that the name and/or role is valid. 
     modifier nameArgsOK(string calldata name, string calldata role) {
         require(valid(name), string(abi.encodePacked("InvalidName: ", name)));
         require(domains[name] == address(0), "AlreadyRegistered");
@@ -74,21 +80,21 @@ contract subportDomains721 is ERC721URIStorage, Pausable {
         if (isBeta) {
             return 0;
         } else if (len <= 5) {
-            return 10 * 10 ** 18; //10 matic for premium domain names once beta is over
+            return 25 * 10 ** 18; //25 matic for premium domain names once beta is over
         } else if (len == 4) {
-            return 5 * 10 ** 18; // 5
+            return 20 * 10 ** 18; //20
         } else {
-            return 3 * 10 ** 18; // 5
+            return 15 * 10 ** 18; //15
         }
     }
 
 
-
+//@dev Public function to set role if it hasn't been set
   function setRole(string calldata name, string calldata role) public nameArgsOK(name, role){
     require(msg.sender == domains[name], "Unauthorized");
     roles[name] = role;
 }
-
+//@dev Token Logic
  function getTokenJson(
         string memory name,
         string memory role,
@@ -120,7 +126,7 @@ contract subportDomains721 is ERC721URIStorage, Pausable {
         return json;
     }
 
-
+//@dev Private domain creation, only owners can reserve - essential for special @handles
     function reserve (
         string calldata name,
         string calldata role
@@ -140,7 +146,7 @@ contract subportDomains721 is ERC721URIStorage, Pausable {
         _tokenIds.increment();
     }
 
-   
+//@dev Public domain creation  
 function register(
         string calldata name,
         string calldata role
@@ -177,18 +183,20 @@ function register(
     function getRole(string calldata name) public view returns (string memory) {
         return roles[name];
     }
+    //@dev Check name length to ensure it falls within agreement
     function valid(string calldata name) public pure returns (bool) {
     bytes memory nameBytes = bytes(name);
     uint256 nameLength = nameBytes.length;
     return nameLength >= 3 && nameLength <= 18;
 }
 
-
+    //@dev Reserve the right to burn tokens that fall outside of agreements
     function burn(uint tokenId) public isSubport {
         require(_exists(tokenId), "Token does not exist");
         _burn(tokenId);
     }
 
+    //@dev Beta Phase has no pricing model. 
     function togglePhase() public isSubport {
         isBeta = !isBeta;
     }
@@ -200,7 +208,7 @@ function register(
         }
         return size > 0;
     }
-
+    //@dev Withdraw
     function withdraw() public isSubport {
         uint amount = address(this).balance;
 
