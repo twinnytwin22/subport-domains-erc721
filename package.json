@@ -5,7 +5,12 @@
   "main": "index.js",
   "engines": { "node": "16.x" },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start-up": "npx hardhat node",
+    "test-local": "npx hardhat run --network localhost scripts/deploy.js",
+    "test-mumbai": "npx hardhat run --network mumbai scripts/deploy.js",
+    "deploy-matic": "npx hardhat run --network matic scripts/deploy.js",
+    "compile": "npx hardhat compile",
+    "clean": "npx hardhat clean"
   },
   "keywords": [],
   "author": "",
