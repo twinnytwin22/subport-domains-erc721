@@ -11,16 +11,20 @@
 */
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+
 import "./access/Pausable.sol";
 import {Base64} from "./libraries/Base64.sol";
 
-contract SubportDomains721 is ERC721URIStorage, Pausable {
-    using Strings for uint256;
+contract SubportDomains721v1 is ERC721URIStorageUpgradeable, Pausable, StringsUpgradeable{
+    using StringsUpgradeable for uint256;
+    
 
-    using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
+    using CountersUpgradeable for CountersUpgradeable.Counter;
+    CountersUpgradeable.Counter private _tokenIds;
 
     address private _owner;
     string public tld;
@@ -38,10 +42,13 @@ contract SubportDomains721 is ERC721URIStorage, Pausable {
 
 
 
-    constructor(string memory _tld) payable ERC721("subport", "SBPRT") {
-    tld = _tld;
-    isBeta = true;
-    openToPublic = true;
+    ///constructor(string memory _tld) payable ERC721("subport", "SBPRT") {
+    ///tld = _tld;
+    ///isBeta = true;
+    ///openToPublic = true;
+    ///}
+    function initialize() initializer public {
+        __ERC721_init('subport', "SBPRT");
     }
         //@dev Check that the name and/or role is valid.
     modifier nameArgsOK(string calldata name, string calldata role) {
@@ -92,7 +99,7 @@ function getTokenJson(
         string memory finalSvg
     ) internal view returns (string memory) {
         uint256 length = bytes(name).length;
-        string memory strLen = Strings.toString(length);
+        string memory strLen = StringsUpgradeable.toString(length);
         string memory json = Base64.encode(
             abi.encodePacked(
                 '{"name": "',
