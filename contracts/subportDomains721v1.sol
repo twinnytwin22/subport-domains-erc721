@@ -16,10 +16,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
-import "./access/Pausable.sol";
+import "./access/PausableUpgradeable.sol";
 import {Base64} from "./libraries/Base64.sol";
 
-contract SubportDomains721v1 is ERC721URIStorageUpgradeable, Pausable, StringsUpgradeable{
+contract SubportDomains721v1 is ERC721URIStorageUpgradeable, PausableUpgradeable {
     using StringsUpgradeable for uint256;
     
 

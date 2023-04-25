@@ -8,7 +8,7 @@ pragma solidity >=0.5.16 <0.9.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract SubportOwnable is OwnableUpgradeable {
+contract SubportOwnableUpgradeable is OwnableUpgradeable {
 
 	//@dev Ownership - list of port members (owners)
 	mapping (address => bool) internal _port;

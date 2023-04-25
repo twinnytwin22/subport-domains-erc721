@@ -9,11 +9,11 @@
 
 pragma solidity >=0.5.16 <0.9.0;
 
-import "./SubportOwnable.sol";
+import "./SubportOwnableUUP.sol";
 
 //@title Pausable
 //@author Twinny @djtwinnytwin
-contract Pausable is SubportOwnable {
+contract PausableUpgradeable is SubportOwnableUpgradeable {
 
 	event Paused(address indexed a);
 	event Unpaused(address indexed a);
