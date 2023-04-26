@@ -12,14 +12,18 @@
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "./access/PausableUpgradeable.sol";
+
+
+
 import {Base64} from "./libraries/Base64.sol";
 
-contract SubportDomains721v1 is ERC721URIStorageUpgradeable, PausableUpgradeable {
+contract SubportProxy is ERC721URIStorageUpgradeable, PausableUpgradeable, OwnableUpgradeable, UUPSUpgradeable {
     using StringsUpgradeable for uint256;
     
 
@@ -32,8 +36,8 @@ contract SubportDomains721v1 is ERC721URIStorageUpgradeable, PausableUpgradeable
     bool public isBeta;
 
     //@dev On-chain storage of the svg
-    string svgPartOne = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 270 270" fill="none"><path fill="url(#a)" d="M0 0h270v270H0z"/><defs><filter id="b" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="270" width="270"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity=".225" width="200%" height="200%"/></filter></defs><path d="M16.29 59.69a11.06 11.06 0 0 1 10.83-8.79h19.72c2.14 0 3.29-1.15 3.59-2.56.33-1.57-.49-2.39-2.63-2.39H34.85c-9.4 0-15.58-4.78-13.28-15.75 2.42-11.55 12.8-15.84 20.8-15.84h18.35c5.93 0 10.36 5.46 9.15 11.26a2.653 2.653 0 0 1-2.59 2.1H42.21c-2.06 0-3.11 1.07-3.39 2.39s.31 2.47 2.37 2.47h11.05c11.88 0 17.44 6.1 15.49 15.42s-10.5 16.25-21.88 16.25H20c-2.41 0-4.21-2.21-3.71-4.57Z" fill="#fff"/><defs><linearGradient id="a" x1="0" y1="0" x2="270" y2="270" gradientUnits="userSpaceOnUse"><stop stop-color="#00008b"/><stop offset="1" stop-color="#004eba" stop-opacity=".99"/></linearGradient></defs><text x="20.5" y="231" font-size="18" fill="#fff" filter="url(#b)" font-family="Plus Jakarta Sans,DejaVu Sans,Noto Color Emoji,Apple Color Emoji,sans-serif" font-weight="bold">';
-    string svgPartTwo = "</text></svg>";
+    string svgPartOne;
+    string svgPartTwo;
 
     mapping(string => address) public domains;
     mapping(string => string) public records;
@@ -47,8 +51,51 @@ contract SubportDomains721v1 is ERC721URIStorageUpgradeable, PausableUpgradeable
     ///isBeta = true;
     ///openToPublic = true;
     ///}
-    function initialize() initializer public {
+    function initialize() public initializer {
         __ERC721_init('subport', "SBPRT");
+        __ERC721URIStorage_init();
+           __ERC721URIStorage_init();
+        __Pausable_init();
+        svgPartOne = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 270 270" fill="none"><path fill="url(#a)" d="M0 0h270v270H0z"/><defs><filter id="b" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="270" width="270"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity=".225" width="200%" height="200%"/></filter></defs><path d="M16.29 59.69a11.06 11.06 0 0 1 10.83-8.79h19.72c2.14 0 3.29-1.15 3.59-2.56.33-1.57-.49-2.39-2.63-2.39H34.85c-9.4 0-15.58-4.78-13.28-15.75 2.42-11.55 12.8-15.84 20.8-15.84h18.35c5.93 0 10.36 5.46 9.15 11.26a2.653 2.653 0 0 1-2.59 2.1H42.21c-2.06 0-3.11 1.07-3.39 2.39s.31 2.47 2.37 2.47h11.05c11.88 0 17.44 6.1 15.49 15.42s-10.5 16.25-21.88 16.25H20c-2.41 0-4.21-2.21-3.71-4.57Z" fill="#fff"/><defs><linearGradient id="a" x1="0" y1="0" x2="270" y2="270" gradientUnits="userSpaceOnUse"><stop stop-color="#00008b"/><stop offset="1" stop-color="#004eba" stop-opacity=".99"/></linearGradient></defs><text x="20.5" y="231" font-size="18" fill="#fff" filter="url(#b)" font-family="Plus Jakarta Sans,DejaVu Sans,Noto Color Emoji,Apple Color Emoji,sans-serif" font-weight="bold">';
+        svgPartTwo = "</text></svg>";
+    }
+
+
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+    function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize)
+        internal
+        whenNotPaused
+        override
+    {
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+    }
+
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        onlyOwner
+        override
+    {}
+        function _burn(uint256 tokenId)
+        internal
+        override(ERC721URIStorageUpgradeable)
+    {
+        super._burn(tokenId);
+    }
+
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override( ERC721URIStorageUpgradeable)
+        returns (string memory)
+    {
+        return super.tokenURI(tokenId);
     }
         //@dev Check that the name and/or role is valid.
     modifier nameArgsOK(string calldata name, string calldata role) {
@@ -62,7 +109,7 @@ contract SubportDomains721v1 is ERC721URIStorageUpgradeable, PausableUpgradeable
         );
         require(
             keccak256(bytes(role)) != keccak256(bytes("admin")) ||
-                msg.sender == owner(),
+                msg.sender == _owner,
             "Admin role can only be assigned by owner"
         );
      _;
@@ -123,7 +170,7 @@ function getTokenJson(
     function reserve(
         string calldata name,
         string calldata role
-    ) public payable isSubport nameArgsOK(name, role) {
+    ) public payable nameArgsOK(name, role) {
         string memory _name = string(abi.encodePacked(name, ".", tld));
         string memory finalSvg = string(
             abi.encodePacked(svgPartOne, _name, svgPartTwo)
@@ -192,18 +239,14 @@ function getTokenJson(
         return nameLength >= 3 && nameLength <= 18;
     }
 
-    //@dev Reserve the right to burn tokens that fall outside of agreements
-    function burn(uint tokenId) public isSubport {
-        require(_exists(tokenId), "Token does not exist");
-        _burn(tokenId);
-    }
+
 
     //@dev Beta Phase has no pricing model.
-    function togglePhase() public isSubport {
+    function togglePhase() public onlyOwner {
         isBeta = !isBeta;
     }
      //@dev Beta Phase has no pricing model.
-    function toggleSale() public isSubport {
+    function toggleSale() public onlyOwner {
         openToPublic = !openToPublic;
     }
 
@@ -217,7 +260,7 @@ function getTokenJson(
     }
 
     //@dev Withdraw
-    function withdraw() public isSubport {
+    function withdraw() public onlyOwner {
         uint amount = address(this).balance;
 
         (bool success, ) = msg.sender.call{value: amount}("");

@@ -168,6 +168,12 @@ function getTokenJson(
         _tokenIds.increment();
     }
 
+    function setRecord(string calldata name, string calldata role) public {
+      // Check that the owner is the transaction sender
+      require(domains[name] == msg.sender);
+      roles[name] = role;
+  }
+
     function getAddress(string calldata name) public view returns (address) {
         // Check that the owner is the transaction sender
         return domains[name];

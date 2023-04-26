@@ -9,6 +9,7 @@
   "scripts": {
     "start-up": "npx hardhat node",
     "test-local": "npx hardhat run --network localhost scripts/deploy.js",
+    "v1test-local": "npx hardhat run --network localhost scripts/deployv1.js",
     "test-mumbai": "npx hardhat run --network mumbai scripts/deploy.js",
     "deploy-matic": "npx hardhat run --network matic scripts/deploy.js",
     "compile": "npx hardhat compile",
