@@ -36,8 +36,6 @@ contract SubportDomains721 is ERC721URIStorage, Pausable {
     mapping(string => string) public roles;
     mapping(uint => string) public names;
 
-
-
     constructor(string memory _tld) payable ERC721("subport", "SBPRT") {
     tld = _tld;
     isBeta = true;
