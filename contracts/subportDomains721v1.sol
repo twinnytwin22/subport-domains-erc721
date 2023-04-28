@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 /*
-/Author Randal Herndon | Twinny
-* Created: April 22nd, 2023
+/Author Randal Herndon | Subport
+
+* Created: April 27nd, 2023
 * subport.xyz
                   __                             __   
  .-----. .--.--. |  |--. .-----. .-----. .----. |  |_ 
@@ -19,7 +20,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Burnab
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 
 import {Base64} from "./libraries/Base64.sol";
 
@@ -57,14 +58,16 @@ contract SubportDomains721vl is
 {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private _tokenIds;
+    
+    using ECDSAUpgradeable for bytes32;
 
     string public tld;
     string private _contractURI;
     address private _owner;
+    address private signerAddress;
     bool public openToPublic;
     bool public isBeta;
     bool private initialized;
-    bytes32 public merkleRoot;
     string public role1;
     string public role2;
 
@@ -95,7 +98,7 @@ contract SubportDomains721vl is
         isBeta = true;
         svgPartOne = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 270 270" fill="none"><path fill="url(#a)" d="M0 0h270v270H0z"/><defs><filter id="b" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="270" width="270"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity=".225" width="200%" height="200%"/></filter></defs><path d="M16.29 59.69a11.06 11.06 0 0 1 10.83-8.79h19.72c2.14 0 3.29-1.15 3.59-2.56.33-1.57-.49-2.39-2.63-2.39H34.85c-9.4 0-15.58-4.78-13.28-15.75 2.42-11.55 12.8-15.84 20.8-15.84h18.35c5.93 0 10.36 5.46 9.15 11.26a2.653 2.653 0 0 1-2.59 2.1H42.21c-2.06 0-3.11 1.07-3.39 2.39s.31 2.47 2.37 2.47h11.05c11.88 0 17.44 6.1 15.49 15.42s-10.5 16.25-21.88 16.25H20c-2.41 0-4.21-2.21-3.71-4.57Z" fill="#fff"/><defs><linearGradient id="a" x1="0" y1="0" x2="270" y2="270" gradientUnits="userSpaceOnUse"><stop stop-color="#00008b"/><stop offset="1" stop-color="#004eba" stop-opacity=".99"/></linearGradient></defs><text x="20.5" y="231" font-size="18" fill="#fff" filter="url(#b)" font-family="Plus Jakarta Sans,DejaVu Sans,Noto Color Emoji,Apple Color Emoji,sans-serif" font-weight="bold">';
         svgPartTwo = "</text></svg>";
-        merkleRoot = '';
+        signerAddress = 0x7B41dE805578Cb93f4D4758Cea533E526EefEf49;
         role1 = _role1;
         role2 = _role2;
 
@@ -199,7 +202,7 @@ contract SubportDomains721vl is
                 '{"trait_type": "Type", "value": "',
                 role,
                 '"},',
-                '{"trait_type": "handle", "value": "',
+                '{"trait_type": "handle", "value": @"',
                 name,
                 ".",
                 tld,
@@ -214,7 +217,7 @@ contract SubportDomains721vl is
     function reserve(
         string calldata name,
         string calldata role
-    ) public payable nameArgsOK(name, role) onlyOwner {
+    ) public nameArgsOK(name, role) onlyOwner {
         string memory _name = string(abi.encodePacked(name, ".", tld));
         string memory finalSvg = string(
             abi.encodePacked(svgPartOne, _name, svgPartTwo)
@@ -235,18 +238,17 @@ contract SubportDomains721vl is
 
     //@dev Public domain creation
     function register(
-        bytes32[] calldata _merkleProof,
+        bytes memory signature,
         string calldata name,
         string calldata role
-    ) public payable nameArgsOK(name, role) {
+    ) external payable nameArgsOK(name, role) {
         require(openToPublic, "Unauthorized");
+        require(verifyAddressSigner(signature), "Address not verified");
         require(
             balanceOf(msg.sender) < 1,
             "Ayeeoo: You can only mint one free collectible!"
         );
-        if (isBeta) {
-            require(verifyAddress(_merkleProof), "Address not verified");
-        }        uint256 _price = price(name);
+        uint256 _price = price(name);
         require(msg.value >= _price, "Not enough Matic paid");
         string memory _name = string(abi.encodePacked(name, ".", tld));
         string memory finalSvg = string(
@@ -305,21 +307,19 @@ contract SubportDomains721vl is
         }
         return size > 0;
     }
-    function verifyAddress(bytes32[] calldata _merkleProof) private 
+    function verifyAddressSigner(bytes memory signature) private 
     view returns (bool) {
-        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
-        return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, leaf);
+        bytes32 messageHash = keccak256(abi.encodePacked(msg.sender));
+        return signerAddress == messageHash.toEthSignedMessageHash().recover(signature);
     }
 
-    function setMerkleRoot(bytes32 merkleRootHash) external onlyOwner
+    function setSignerAddress(address newSignerAddress) external onlyOwner
 {
-    merkleRoot = merkleRootHash;
+    signerAddress = newSignerAddress;
 }
     function setContractURI(string memory contractURI) external onlyOwner {
         _contractURI = contractURI;
     }
-    
-
     //@dev Withdraw
     function withdraw() public onlyOwner {
         uint amount = address(this).balance;
