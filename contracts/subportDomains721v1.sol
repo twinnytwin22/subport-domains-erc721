@@ -19,45 +19,63 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Burnab
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
 
 import {Base64} from "./libraries/Base64.sol";
 
-contract SubportDomains721vl is Initializable, ERC721Upgradeable, ERC721URIStorageUpgradeable, PausableUpgradeable, OwnableUpgradeable, ERC721BurnableUpgradeable, UUPSUpgradeable {
+contract SubportDomains721vl is
+    Initializable,
+    ERC721Upgradeable,
+    ERC721URIStorageUpgradeable,
+    PausableUpgradeable,
+    OwnableUpgradeable,
+    ERC721BurnableUpgradeable,
+    UUPSUpgradeable
+{
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private _tokenIds;
-    
+
     string public tld;
+    string private _contractURI;
+    address private _owner;
     bool public openToPublic;
     bool public isBeta;
     bool private initialized;
-    address private _owner;
-   
+    string public role1;
+    string public role2;
+    bytes32 public merkleRoot;
+
     //@dev On-chain storage of the svg
-    string  svgPartOne;
-    string  svgPartTwo;
+    string svgPartOne;
+    string svgPartTwo;
+    
 
     mapping(string => address) public domains;
     mapping(string => string) public roles;
     mapping(uint => string) public names;
-    mapping (uint => mapping(address => bool)) private _followers;
-    mapping (uint256 => uint256) private _followerCounts;
 
-/// @custom:oz-upgrades-unsafe-allow constructor
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(string memory _tld) initializer public {
-        __ERC721_init('subport', "SBPRT");
+    function initialize(string memory _tld, string memory _role1, string memory _role2) public initializer {
+        __ERC721_init("subport", "SBPRT");
         __ERC721URIStorage_init();
         __Pausable_init();
         __Ownable_init();
         __ERC721Burnable_init();
         __UUPSUpgradeable_init();
+        tld = _tld;
+        openToPublic = true;
+        isBeta = true;
+        initialized = true;
         svgPartOne = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 270 270" fill="none"><path fill="url(#a)" d="M0 0h270v270H0z"/><defs><filter id="b" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="270" width="270"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity=".225" width="200%" height="200%"/></filter></defs><path d="M16.29 59.69a11.06 11.06 0 0 1 10.83-8.79h19.72c2.14 0 3.29-1.15 3.59-2.56.33-1.57-.49-2.39-2.63-2.39H34.85c-9.4 0-15.58-4.78-13.28-15.75 2.42-11.55 12.8-15.84 20.8-15.84h18.35c5.93 0 10.36 5.46 9.15 11.26a2.653 2.653 0 0 1-2.59 2.1H42.21c-2.06 0-3.11 1.07-3.39 2.39s.31 2.47 2.37 2.47h11.05c11.88 0 17.44 6.1 15.49 15.42s-10.5 16.25-21.88 16.25H20c-2.41 0-4.21-2.21-3.71-4.57Z" fill="#fff"/><defs><linearGradient id="a" x1="0" y1="0" x2="270" y2="270" gradientUnits="userSpaceOnUse"><stop stop-color="#00008b"/><stop offset="1" stop-color="#004eba" stop-opacity=".99"/></linearGradient></defs><text x="20.5" y="231" font-size="18" fill="#fff" filter="url(#b)" font-family="Plus Jakarta Sans,DejaVu Sans,Noto Color Emoji,Apple Color Emoji,sans-serif" font-weight="bold">';
         svgPartTwo = "</text></svg>";
-        tld = _tld;
-        _owner = msg.sender;
+        merkleRoot = 0x09485889b804a49c9e383c7966a2c480ab28a13a8345c4ebe0886a7478c0b73d;
+        role1 = _role1;
+        role2 = _role2;
+
     }
 
     function pause() public onlyOwner {
@@ -68,27 +86,28 @@ contract SubportDomains721vl is Initializable, ERC721Upgradeable, ERC721URIStora
         _unpause();
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize)
-        internal
-        whenNotPaused
-        override
-    {
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 batchSize
+    ) internal override whenNotPaused {
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
     }
 
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        onlyOwner
-        override
-    {}
-        function _burn(uint256 tokenId)
-        internal
-        override(ERC721URIStorageUpgradeable, ERC721Upgradeable)
-    {
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyOwner {}
+
+    function _burn(
+        uint256 tokenId
+    ) internal override(ERC721URIStorageUpgradeable, ERC721Upgradeable) {
         super._burn(tokenId);
     }
 
-    function tokenURI(uint256 tokenId)
+    function tokenURI(
+        uint256 tokenId
+    )
         public
         view
         override(ERC721URIStorageUpgradeable, ERC721Upgradeable)
@@ -96,7 +115,8 @@ contract SubportDomains721vl is Initializable, ERC721Upgradeable, ERC721URIStora
     {
         return super.tokenURI(tokenId);
     }
-        //@dev Check that the name and/or role is valid.
+
+    //@dev Check that the name and/or role is valid.
     modifier nameArgsOK(string calldata name, string calldata role) {
         require(valid(name), string(abi.encodePacked("InvalidName: ", name)));
         require(domains[name] == address(0), "AlreadyRegistered");
@@ -111,7 +131,7 @@ contract SubportDomains721vl is Initializable, ERC721Upgradeable, ERC721URIStora
                 msg.sender == _owner,
             "Admin role can only be assigned by owner"
         );
-     _;
+        _;
     }
 
     // Add this anywhere in your contract body
@@ -139,27 +159,30 @@ contract SubportDomains721vl is Initializable, ERC721Upgradeable, ERC721URIStora
     }
 
     //@dev Token Logic
-function getTokenJson(
+    function getTokenJson(
         string memory name,
         string memory role,
         string memory finalSvg
     ) internal view returns (string memory) {
-        uint256 length = bytes(name).length;
-        string memory strLen = StringsUpgradeable.toString(length);
         string memory json = Base64.encode(
-    abi.encodePacked(
-    '{"name": "',name,
-    ".",tld,
-    '","description": "your official subport handle","image": "data:image/svg+xml;base64,',
-    Base64.encode(bytes(finalSvg)),
-    '","length": "',strLen,
-    '","role": "',role,
-    '","attributes": [',
-    '{"trait_type": "Type", "value": "',role,'"},',
-    '{"trait_type": "ID", "value": "',strLen,'"},',
-    '{"trait_type": "handle", "value": "',name,'"+"',tld,'"},',
-    ']'
-)
+            abi.encodePacked(
+                '{"name": "',
+                name,
+                ".",
+                tld,
+                '","description": "your official subport handle. digital collectibles for fans, from artists they listen to. unlock music.","image": "data:image/svg+xml;base64,',
+                Base64.encode(bytes(finalSvg)),
+                '","attributes": [',
+                '{"trait_type": "Type", "value": "',
+                role,
+                '"},',
+                '{"trait_type": "handle", "value": "',
+                name,
+                ".",
+                tld,
+                '"}',
+                "]}"
+            )
         );
         return json;
     }
@@ -168,7 +191,7 @@ function getTokenJson(
     function reserve(
         string calldata name,
         string calldata role
-    ) public payable nameArgsOK(name, role) {
+    ) public payable nameArgsOK(name, role) onlyOwner {
         string memory _name = string(abi.encodePacked(name, ".", tld));
         string memory finalSvg = string(
             abi.encodePacked(svgPartOne, _name, svgPartTwo)
@@ -229,24 +252,6 @@ function getTokenJson(
         return roles[name];
     }
 
-
-    function follow(uint256 tokenId) public {
-    require(_exists(tokenId), "Token does not exist");
-    _followers[tokenId][msg.sender] = true;
-    _followerCounts[tokenId]++;
-}
-
-    function unfollow(uint256 tokenId) public {
-    require(_exists(tokenId), "Token does not exist");
-    _followers[tokenId][msg.sender] = false;
-    _followerCounts[tokenId]--;
-}
-
-    function getFollowersCount(uint256 tokenId) public view returns (uint256) {
-    require(_exists(tokenId), "Token does not exist");
-    return _followerCounts[tokenId];
-}
-
     //@dev Check name length to ensure it falls within agreement
     function valid(string calldata name) public pure returns (bool) {
         bytes memory nameBytes = bytes(name);
@@ -257,11 +262,12 @@ function getTokenJson(
     //@dev Beta Phase has no pricing model.
     function togglePhase() public onlyOwner {
         require(openToPublic);
-        isBeta = !isBeta;
+        isBeta = isBeta ? false : true;
     }
-     //@dev Beta Phase has no pricing model.
+
+    //@dev Beta Phase has no pricing model.
     function toggleSale() public onlyOwner {
-        openToPublic = !openToPublic;
+        openToPublic = openToPublic ? false : true;
     }
 
     //@dev Determine if an address is a smart contract
@@ -272,6 +278,20 @@ function getTokenJson(
         }
         return size > 0;
     }
+    function verifyAddress(bytes32[] calldata _merkleProof) private 
+    view returns (bool) {
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
+        return MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, leaf);
+    }
+
+    function setMerkleRoot(bytes32 merkleRootHash) external onlyOwner
+{
+    merkleRoot = merkleRootHash;
+}
+    function setContractURI(string memory contractURI) external onlyOwner {
+        _contractURI = contractURI;
+    }
+    
 
     //@dev Withdraw
     function withdraw() public onlyOwner {

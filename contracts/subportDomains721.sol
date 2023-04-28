@@ -16,17 +16,43 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "./access/Pausable.sol";
 import {Base64} from "./libraries/Base64.sol";
 
-contract SubportDomains721 is ERC721URIStorage, Pausable {
+abstract contract ContextMixin {
+    function msgSender()
+        internal
+        view
+        returns (address payable sender)
+    {
+        if (msg.sender == address(this)) {
+            bytes memory array = msg.data;
+            uint256 index = msg.data.length;
+            assembly {
+                // Load the 32 bytes word from memory with the address on the lower 20 bytes, and mask those.
+                sender := and(
+                    mload(add(array, index)),
+                    0xffffffffffffffffffffffffffffffffffffffff
+                )
+            }
+        } else {
+            sender = payable(msg.sender);
+        }
+        return sender;
+    }
+}
+
+
+contract SubportDomains721 is ERC721URIStorage, Pausable, ContextMixin {
     using Strings for uint256;
 
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
-
-    address private _owner;
-    string public tld;
+    
     bool public openToPublic;
     bool public isBeta;
-
+    address private _owner;
+    string public tld;
+    string public role1;
+    string public role2;
+   
     //@dev On-chain storage of the svg
     string svgPartOne = '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 270 270" fill="none"><path fill="url(#a)" d="M0 0h270v270H0z"/><defs><filter id="b" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse" height="270" width="270"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity=".225" width="200%" height="200%"/></filter></defs><path d="M16.29 59.69a11.06 11.06 0 0 1 10.83-8.79h19.72c2.14 0 3.29-1.15 3.59-2.56.33-1.57-.49-2.39-2.63-2.39H34.85c-9.4 0-15.58-4.78-13.28-15.75 2.42-11.55 12.8-15.84 20.8-15.84h18.35c5.93 0 10.36 5.46 9.15 11.26a2.653 2.653 0 0 1-2.59 2.1H42.21c-2.06 0-3.11 1.07-3.39 2.39s.31 2.47 2.37 2.47h11.05c11.88 0 17.44 6.1 15.49 15.42s-10.5 16.25-21.88 16.25H20c-2.41 0-4.21-2.21-3.71-4.57Z" fill="#fff"/><defs><linearGradient id="a" x1="0" y1="0" x2="270" y2="270" gradientUnits="userSpaceOnUse"><stop stop-color="#00008b"/><stop offset="1" stop-color="#004eba" stop-opacity=".99"/></linearGradient></defs><text x="20.5" y="231" font-size="18" fill="#fff" filter="url(#b)" font-family="Plus Jakarta Sans,DejaVu Sans,Noto Color Emoji,Apple Color Emoji,sans-serif" font-weight="bold">';
     string svgPartTwo = "</text></svg>";
@@ -35,6 +61,8 @@ contract SubportDomains721 is ERC721URIStorage, Pausable {
     mapping(string => string) public records;
     mapping(string => string) public roles;
     mapping(uint => string) public names;
+    mapping(uint => mapping(address => bool)) private _followers;
+    mapping(uint256 => uint256) private _followerCounts;
 
     constructor(string memory _tld) payable ERC721("subport", "SBPRT") {
     tld = _tld;
@@ -46,9 +74,9 @@ contract SubportDomains721 is ERC721URIStorage, Pausable {
         require(valid(name), string(abi.encodePacked("InvalidName: ", name)));
         require(domains[name] == address(0), "AlreadyRegistered");
         require(
-            keccak256(bytes(role)) == keccak256(bytes("creator")) ||
-                keccak256(bytes(role)) == keccak256(bytes("admin")) ||
-                keccak256(bytes(role)) == keccak256(bytes("collector")),
+            keccak256(bytes(role)) == keccak256(bytes(role1)) ||
+                keccak256(bytes(role)) == keccak256(bytes(role2)) ||
+                keccak256(bytes(role)) == keccak256(bytes('admin')),
             "Invalid role"
         );
         require(
@@ -89,22 +117,17 @@ function getTokenJson(
         string memory role,
         string memory finalSvg
     ) internal view returns (string memory) {
-        uint256 length = bytes(name).length;
-        string memory strLen = Strings.toString(length);
         string memory json = Base64.encode(
-            abi.encodePacked(
-                '{"name": "',
-                name,
-                ".",
-                tld,
-                '","description": "your official subport handle","image": "data:image/svg+xml;base64,',
-                Base64.encode(bytes(finalSvg)),
-                '","length": "',
-                strLen,
-                '","role": "',
-                role,
-                '"}'
-            )
+         abi.encodePacked(
+  '{"name": "',name,".",tld,
+  '","description": "your official subport handle. digital collectibles for fans, from artists they listen to. unlock music.","image": "data:image/svg+xml;base64,',
+  Base64.encode(bytes(finalSvg)),
+  '","attributes": [',
+  '{"trait_type": "Type", "value": "',role,'"},',
+  '{"trait_type": "handle", "value": "',name,'.',tld,'"}',
+  ']}'
+)
+
         );
 
         return json;
@@ -115,7 +138,7 @@ function getTokenJson(
         string calldata name,
         string calldata role
     ) public payable isSubport nameArgsOK(name, role) {
-        string memory _name = string(abi.encodePacked(name, ".", tld));
+        string memory _name = string(abi.encodePacked(name,".",tld));
         string memory finalSvg = string(
             abi.encodePacked(svgPartOne, _name, svgPartTwo)
         );
@@ -166,7 +189,7 @@ function getTokenJson(
         _tokenIds.increment();
     }
 
-    function setRecord(string calldata name, string calldata role) public {
+    function setRole(string calldata name, string calldata role) public {
       // Check that the owner is the transaction sender
       require(domains[name] == msg.sender);
       roles[name] = role;

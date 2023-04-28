@@ -11,6 +11,7 @@
     "test-upgrade": "npx hardhat run --network localhost scripts/deploytest.js",
     "test-local": "npx hardhat run --network localhost scripts/deploy.js",
     "v1test-local": "npx hardhat run --network localhost scripts/deployv1.js",
+    "v1test-mumbai": "npx hardhat run --network mumbai scripts/deployv1.js",
     "test-mumbai": "npx hardhat run --network mumbai scripts/deploy.js",
     "deploy-matic": "npx hardhat run --network matic scripts/deploy.js",
     "compile": "npx hardhat compile",
@@ -26,7 +27,8 @@
     "@openzeppelin/contracts-upgradeable": "^4.8.3",
     "@thirdweb-dev/contracts": "^3.0.1",
     "dotenv": "^16.0.1",
-    "hardhat": "^2.9.9"
+    "hardhat": "^2.9.9",
+    "merkletreejs": "^0.3.10"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.2.3",
